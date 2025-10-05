@@ -5,31 +5,45 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { phoneSchema } from '../utils/validation';
 
 const PhoneInputForm = ({ onContinue }) => {
-  const [selectedCountry, setSelectedCountry] = useState('US');
-  const [countries, setCountries] = useState([]);
+  const [selectedCountry, setSelectedCountry] = useState('India');
+  const [countries, setCountries] = useState([
+    { name: 'United States', dialCode: '+1', flag: '🇺🇸' },
+    { name: 'Canada', dialCode: '+1', flag: '🇨🇦' },
+    { name: 'India', dialCode: '+91', flag: '🇮🇳' },
+    { name: 'United Kingdom', dialCode: '+44', flag: '🇬🇧' },
+    { name: 'Australia', dialCode: '+61', flag: '🇦🇺' },
+    { name: 'Germany', dialCode: '+49', flag: '🇩🇪' },
+    { name: 'France', dialCode: '+33', flag: '🇫🇷' },
+    { name: 'Japan', dialCode: '+81', flag: '🇯🇵' },
+    { name: 'Brazil', dialCode: '+55', flag: '🇧🇷' },
+    { name: 'South Africa', dialCode: '+27', flag: '🇿🇦' }
+  ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingCountries, setIsFetchingCountries] = useState(true);
 
   // Fetch countries data
   useEffect(() => {
-    fetch('https://restcountries.com/v3.1/all')
+    fetch('https://restcountries.com/v3.1/all?fields=name,flags,idd')
       .then(response => response.json())
       .then(data => {
-        const formattedCountries = data.map(country => ({
-          name: country.name.common,
-          dialCode: country.idd?.root + (country.idd?.suffixes?.[0] || ''),
-          flag: country.flags?.png
-        })).sort((a, b) => a.name.localeCompare(b.name));
-        setCountries(formattedCountries);
+        const formattedCountries = data
+          .filter(country => country.idd && country.idd.root) // Only countries with dial codes
+          .map(country => ({
+            name: country.name.common,
+            dialCode: country.idd.root + (country.idd.suffixes?.[0] || ''),
+            flag: country.flags?.png || '🏳️'
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        
+        if (formattedCountries.length > 0) {
+          setCountries(formattedCountries);
+        }
+        setIsFetchingCountries(false);
       })
       .catch(error => {
         console.error('Error fetching countries:', error);
-        // Fallback countries
-        setCountries([
-          { name: 'United States', dialCode: '+1', flag: '🇺🇸' },
-          { name: 'Canada', dialCode: '+1', flag: '🇨🇦' },
-          { name: 'India', dialCode: '+91', flag: '🇮🇳' },
-          { name: 'United Kingdom', dialCode: '+44', flag: '🇬🇧' }
-        ]);
+        setIsFetchingCountries(false);
+        // Fallback countries are already set as initial state
       });
   }, []);
 
@@ -44,13 +58,43 @@ const PhoneInputForm = ({ onContinue }) => {
     setIsLoading(true);
     try {
       // Simulate API call to send OTP
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       onContinue(data.phoneNumber, selectedCountry);
     } catch (error) {
       console.error('Error sending OTP:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Function to render flag properly
+  const renderFlag = (flag) => {
+    // If flag is a URL, render as image
+    if (flag && (flag.startsWith('http://') || flag.startsWith('https://'))) {
+      return (
+        <img 
+          src={flag} 
+          alt="Flag" 
+          className="w-5 h-4 object-cover rounded-sm inline-block mr-2" 
+          onError={(e) => {
+            // If image fails to load, show emoji flag or default
+            e.target.style.display = 'none';
+            const flagSpan = document.createElement('span');
+            flagSpan.textContent = '🏳️';
+            flagSpan.className = 'mr-2';
+            e.target.parentNode.insertBefore(flagSpan, e.target);
+          }}
+        />
+      );
+    }
+    // If flag is an emoji, render as text
+    return <span className="mr-2">{flag}</span>;
+  };
+
+  // Get flag for selected country
+  const getSelectedCountryFlag = () => {
+    const country = countries.find(c => c.name === selectedCountry);
+    return country ? country.flag : '🏳️';
   };
 
   return (
@@ -68,10 +112,12 @@ const PhoneInputForm = ({ onContinue }) => {
               value={selectedCountry}
               onChange={(e) => setSelectedCountry(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm appearance-none"
+              disabled={isFetchingCountries}
             >
               {countries.map(country => (
                 <option key={country.name} value={country.name}>
-                  {country.flag} {country.name} ({country.dialCode})
+                  {renderFlag(country.flag)}
+                  {country.name} ({country.dialCode})
                 </option>
               ))}
             </select>
@@ -123,7 +169,7 @@ const PhoneInputForm = ({ onContinue }) => {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isFetchingCountries}
           className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 px-4 rounded-lg hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
           {isLoading ? (

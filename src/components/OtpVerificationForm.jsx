@@ -8,8 +8,9 @@ const OtpVerificationForm = ({ onVerify, phoneNumber, countryCode }) => {
   const [countdown, setCountdown] = useState(60);
   const [isResending, setIsResending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors }, setError } = useForm({
     resolver: zodResolver(otpSchema),
     defaultValues: {
       otp: '',
@@ -32,18 +33,36 @@ const OtpVerificationForm = ({ onVerify, phoneNumber, countryCode }) => {
           return prev - 1;
         });
       }, 1000);
-    }, 2000);
+    }, 1000);
   };
 
   const onSubmit = async (data) => {
+    setIsVerifying(true);
     try {
       // Simulate API call to verify OTP
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      onVerify(data.otp);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For demo purposes, we'll accept any 6-digit code
+      // In a real app, you would verify with your backend
+      if (data.otp.length === 6 && /^\d+$/.test(data.otp)) {
+        setShowSuccess(true);
+        // Call the onVerify callback
+        onVerify(data.otp);
+        // The navigation is handled in the LoginPage component
+      } else {
+        setError('otp', {
+          type: 'manual',
+          message: 'Invalid OTP. Please enter a 6-digit code.'
+        });
+      }
     } catch (error) {
       console.error('Error verifying OTP:', error);
+      setError('otp', {
+        type: 'manual',
+        message: 'Failed to verify OTP. Please try again.'
+      });
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -83,6 +102,7 @@ const OtpVerificationForm = ({ onVerify, phoneNumber, countryCode }) => {
               className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm ${
                 errors.otp ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
               }`}
+              maxLength="6"
             />
             {errors.otp ? (
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -110,9 +130,20 @@ const OtpVerificationForm = ({ onVerify, phoneNumber, countryCode }) => {
 
         <button
           type="submit"
+          disabled={isVerifying}
           className="w-full bg-gradient-to-r from-green-500 to-teal-600 text-white py-3 px-4 rounded-lg hover:from-green-600 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
-          Verify & Continue
+          {isVerifying ? (
+            <div className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Verifying...
+            </div>
+          ) : (
+            'Verify & Continue'
+          )}
         </button>
       </form>
 

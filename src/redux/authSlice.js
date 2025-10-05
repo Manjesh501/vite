@@ -1,10 +1,19 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+// Check if user is already authenticated from localStorage
+const authToken = localStorage.getItem('authToken');
+const phoneNumber = localStorage.getItem('phoneNumber');
+const countryCode = localStorage.getItem('countryCode');
+
 const initialState = {
-  isAuthenticated: false,
-  user: null,
-  countryCode: '+1',
-  phoneNumber: '',
+  isAuthenticated: !!authToken,
+  user: authToken ? {
+    phoneNumber: phoneNumber,
+    countryCode: countryCode,
+    token: authToken
+  } : null,
+  countryCode: countryCode || '+1',
+  phoneNumber: phoneNumber || '',
   otp: '',
   countries: [],
 };
@@ -37,6 +46,11 @@ export const authSlice = createSlice({
       state.countryCode = '+1';
       state.phoneNumber = '';
       state.otp = '';
+      
+      // Clear localStorage as well
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('phoneNumber');
+      localStorage.removeItem('countryCode');
     },
   },
 });

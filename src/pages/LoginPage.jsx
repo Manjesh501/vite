@@ -3,30 +3,47 @@ import React, { useState } from 'react';
 import PhoneInputForm from '../components/PhoneInputForm';
 import OtpVerificationForm from '../components/OtpVerificationForm';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { setAuthenticated, setUser, setPhoneNumber, setCountryCode } from '../redux/authSlice';
 
 const LoginPage = () => {
   const [step, setStep] = useState('phone'); // 'phone' or 'otp'
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('US');
+  const [phoneNumber, setPhoneNumberLocal] = useState('');
+  const [countryCode, setCountryCodeLocal] = useState('India');
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleContinue = (phone, country) => {
-    setPhoneNumber(phone);
-    setCountryCode(country);
+    setPhoneNumberLocal(phone);
+    setCountryCodeLocal(country);
     setStep('otp');
   };
 
   const handleVerify = (otp) => {
     // Simulate successful authentication
-    localStorage.setItem('authToken', 'fake-token');
+    const user = {
+      phoneNumber: phoneNumber,
+      countryCode: countryCode,
+      token: 'fake-token-' + Date.now()
+    };
+    
+    // Update Redux store
+    dispatch(setAuthenticated(true));
+    dispatch(setUser(user));
+    dispatch(setPhoneNumber(phoneNumber));
+    dispatch(setCountryCode(countryCode));
+    
+    // Also save to localStorage for persistence
+    localStorage.setItem('authToken', user.token);
     localStorage.setItem('phoneNumber', phoneNumber);
     localStorage.setItem('countryCode', countryCode);
     
     // Navigate to dashboard after successful authentication
+    // Using a short timeout to show the success message
     setTimeout(() => {
       navigate('/dashboard');
-    }, 1000);
+    }, 1500);
   };
 
   return (
